@@ -18,8 +18,11 @@ VOLUME_UP = [ord('+'), ord('0'), curses.KEY_UP]
 VOLUME_DOWN = [ord('-'), ord('9'), curses.KEY_DOWN]
 MUTE = [ord('m')]
 PLAYPAUSE = [ord(' '), ord('p'), curses.KEY_ENTER]
-DEFAULT_VOLUME = 100
+VOLUME = 100
 VOLUMESTEP = 5
+PLAYING_STATE = True
+MUTED_STATE = False
+CURRENT_META = { "title": "Unknown title", "album": "Unknown album", "artist": "Unknown artist" }
 
 def main():
     stdscr = _init_curses()
@@ -28,18 +31,19 @@ def main():
 
     mplayer_process = _init_mplayer_with_pipe()
     set_header_text(stdscr, "Playing")
+    update_meta_display(stdscr)
 
     key_event = -1
     while key_event not in QUIT:  # Handle keys
         key_event = stdscr.getch()
         if key_event in VOLUME_UP:
-            mplayer_incvol(mplayer_process)
+            mplayer_incvol(stdscr, mplayer_process)
         elif key_event in VOLUME_DOWN:
-            mplayer_decvol(mplayer_process)
+            mplayer_decvol(stdscr, mplayer_process)
         elif key_event in MUTE:
-            mplayer_mutetoggle(mplayer_process)
+            mplayer_mutetoggle(stdscr, mplayer_process)
         elif key_event in PLAYPAUSE:
-            mplayer_playpause(mplayer_process)
+            mplayer_playpause(stdscr, mplayer_process)
 
     set_header_text(stdscr, "Quitting...")
     _quit_mplayer(mplayer_process)
@@ -50,7 +54,8 @@ def _init_curses():
     curses.noecho()  # No echo-ing characters
     curses.cbreak()  # Instant key handling
     stdscr.keypad(True)  # Conversion of special characters
-    stdscr.clear()
+    stdscr.clear()  # Clear screen
+    curses.curs_set(0)  # Make cursor invisible
     return stdscr
 
 def _quit_curses(stdscr):  # Revert to terminal-friendly mode
@@ -65,24 +70,33 @@ def set_header_text(stdscr, text):  # Change the text of the window header
               curses.A_REVERSE)
     stdscr.refresh()
 
+def update_meta_display(stdscr):  # Updates the metadata display
+    stdscr.addstr(int(curses.LINES/2)-2, int(curses.COLS/2), _fill_spaces(CURRENT_META["title"]))
+    stdscr.addstr(int(curses.LINES/2)-1, int(curses.COLS/2), _fill_spaces(CURRENT_META["album"]))
+    stdscr.addstr(int(curses.LINES/2), int(curses.COLS/2), _fill_spaces(CURRENT_META["artist"]))
+    volume = f'Volume: {str(VOLUME)}% {" (muted)" if MUTED_STATE else "          "}'
+    stdscr.addstr(int(curses.LINES/2)+1, int(curses.COLS/2), volume)
+    if PLAYING_STATE:
+        stdscr.addstr(int(curses.LINES/2)+2, int(curses.COLS/2), "Playing")
+    else:
+        stdscr.addstr(int(curses.LINES/2)+2, int(curses.COLS/2), "Paused ")
+    stdscr.refresh()
+
+def _fill_spaces(text):  # Fills spaces after text until window end
+    return text + int(curses.COLS/2-(len(text)/2)) * " "
+
 def _init_mplayer_with_pipe():  # Start mplayer and return the stdin as a pipe
-    p = Popen(f'mplayer -volume {DEFAULT_VOLUME} -volstep {VOLUMESTEP} https://listen.moe/stream', stdin=PIPE, stdout=DEVNULL)
+    p = Popen(f'mplayer -volume {VOLUME} -volstep {VOLUMESTEP} https://listen.moe/stream', stdin=PIPE, stdout=DEVNULL)
     return p
 
 def _quit_mplayer(proc):  # Send q character to mplayer to quit
-    line = b'q'
-    try:
-        proc.stdin.write(line)
-    except IOError as e:
-        proc.kill()
-    proc.stdin.flush()
+    _mplayer_sendkey(proc, b'q')
     proc.stdin.close()
     proc.wait()
 
-def mplayer_incvol(proc):  # Increase mplayer volume
-    line = b'0'
+def _mplayer_sendkey(proc, key):  # Send a key to the mplayer process proc
     try:
-        proc.stdin.write(line)
+        proc.stdin.write(key)
     except IOError as e:
         if e.errno == errno.EPIPE or e.errno == errno.EINVAL:
             return
@@ -90,38 +104,33 @@ def mplayer_incvol(proc):  # Increase mplayer volume
             raise
     proc.stdin.flush()
 
-def mplayer_decvol(proc):  # Decrease mplayer volume
-    line = b'9'
-    try:
-        proc.stdin.write(line)
-    except IOError as e:
-        if e.errno == errno.EPIPE or e.errno == errno.EINVAL:
-            return
-        else:
-            raise
-    proc.stdin.flush()
+def mplayer_incvol(stdscr, proc):  # Increase mplayer volume
+    _mplayer_sendkey(proc, b'0')
+    global VOLUME
+    VOLUME = min(VOLUME + VOLUMESTEP, 100)
+    update_meta_display(stdscr)
 
-def mplayer_playpause(proc):  # Play/Pause mplayer
-    line = b' '
-    try:
-        proc.stdin.write(line)
-    except IOError as e:
-        if e.errno == errno.EPIPE or e.errno == errno.EINVAL:
-            return
-        else:
-            raise
-    proc.stdin.flush()
+def mplayer_decvol(stdscr, proc):  # Decrease mplayer volume
+    _mplayer_sendkey(proc, b'9')
+    global VOLUME
+    VOLUME = max(VOLUME - VOLUMESTEP, 0)
+    update_meta_display(stdscr)
 
-def mplayer_mutetoggle(proc):  # Toggle mplayer mute state
-    line = b'm'
-    try:
-        proc.stdin.write(line)
-    except IOError as e:
-        if e.errno == errno.EPIPE or e.errno == errno.EINVAL:
-            return
-        else:
-            raise
-    proc.stdin.flush()
+def mplayer_playpause(stdscr, proc):  # Play/Pause mplayer
+    _mplayer_sendkey(proc, b' ')
+    global PLAYING_STATE
+    PLAYING_STATE = not PLAYING_STATE
+    if PLAYING_STATE:
+        set_header_text(stdscr, "Playing")
+    else:
+        set_header_text(stdscr, "Paused")
+    update_meta_display(stdscr)
+
+def mplayer_mutetoggle(stdscr, proc):  # Toggle mplayer mute state
+    _mplayer_sendkey(proc, b'm')
+    global MUTED_STATE
+    MUTED_STATE = not MUTED_STATE
+    update_meta_display(stdscr)
 
 if __name__ == '__main__':
     main()
