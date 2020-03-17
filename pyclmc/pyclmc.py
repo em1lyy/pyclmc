@@ -13,6 +13,14 @@ import errno
 
 HEADER_TEXT = ""
 
+QUIT = [ord('q'), curses.KEY_CANCEL, curses.KEY_END, curses.KEY_EXIT, 27]
+VOLUME_UP = [ord('+'), ord('0'), curses.KEY_UP]
+VOLUME_DOWN = [ord('-'), ord('9'), curses.KEY_DOWN]
+MUTE = [ord('m')]
+PLAYPAUSE = [ord(' '), ord('p'), curses.KEY_ENTER]
+DEFAULT_VOLUME = 100
+VOLUMESTEP = 5
+
 def main():
     stdscr = _init_curses()
 
@@ -20,7 +28,18 @@ def main():
 
     mplayer_process = _init_mplayer_with_pipe()
     set_header_text(stdscr, "Playing")
-    sleep(60)
+
+    key_event = -1
+    while key_event not in QUIT:  # Handle keys
+        key_event = stdscr.getch()
+        if key_event in VOLUME_UP:
+            mplayer_incvol(mplayer_process)
+        elif key_event in VOLUME_DOWN:
+            mplayer_decvol(mplayer_process)
+        elif key_event in MUTE:
+            mplayer_mutetoggle(mplayer_process)
+        elif key_event in PLAYPAUSE:
+            mplayer_playpause(mplayer_process)
 
     set_header_text(stdscr, "Quitting...")
     _quit_mplayer(mplayer_process)
@@ -40,17 +59,17 @@ def _quit_curses(stdscr):  # Revert to terminal-friendly mode
     curses.echo()
     curses.endwin()
 
-def set_header_text(stdscr, text):
+def set_header_text(stdscr, text):  # Change the text of the window header
     HEADER_TEXT = f'{text} - pyclmc'
     stdscr.addstr(0, 0, int(curses.COLS/2-(len(HEADER_TEXT)/2))*" " + HEADER_TEXT + int(curses.COLS/2-(len(HEADER_TEXT)/2)) * " ",
               curses.A_REVERSE)
     stdscr.refresh()
 
-def _init_mplayer_with_pipe():
-    p = Popen('mplayer https://listen.moe/stream', stdin=PIPE, stdout=DEVNULL)
+def _init_mplayer_with_pipe():  # Start mplayer and return the stdin as a pipe
+    p = Popen(f'mplayer -volume {DEFAULT_VOLUME} -volstep {VOLUMESTEP} https://listen.moe/stream', stdin=PIPE, stdout=DEVNULL)
     return p
 
-def _quit_mplayer(proc):
+def _quit_mplayer(proc):  # Send q character to mplayer to quit
     line = b'q'
     try:
         proc.stdin.write(line)
@@ -60,7 +79,7 @@ def _quit_mplayer(proc):
     proc.stdin.close()
     proc.wait()
 
-def mplayer_incvol(proc):
+def mplayer_incvol(proc):  # Increase mplayer volume
     line = b'0'
     try:
         proc.stdin.write(line)
@@ -71,7 +90,7 @@ def mplayer_incvol(proc):
             raise
     proc.stdin.flush()
 
-def mplayer_decvol(proc):
+def mplayer_decvol(proc):  # Decrease mplayer volume
     line = b'9'
     try:
         proc.stdin.write(line)
@@ -82,7 +101,7 @@ def mplayer_decvol(proc):
             raise
     proc.stdin.flush()
 
-def mplayer_playpause(proc):
+def mplayer_playpause(proc):  # Play/Pause mplayer
     line = b' '
     try:
         proc.stdin.write(line)
@@ -93,7 +112,7 @@ def mplayer_playpause(proc):
             raise
     proc.stdin.flush()
 
-def mplayer_mutetoggle(proc):
+def mplayer_mutetoggle(proc):  # Toggle mplayer mute state
     line = b'm'
     try:
         proc.stdin.write(line)
