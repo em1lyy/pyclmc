@@ -47,7 +47,7 @@ def set_header_text(stdscr, text):
     stdscr.refresh()
 
 def _init_mplayer_with_pipe():
-    p = Popen('mplayer https://listen.moe/stream', stdin=PIPE)
+    p = Popen('mplayer https://listen.moe/stream', stdin=PIPE, stdout=DEVNULL)
     return p
 
 def _quit_mplayer(proc):
