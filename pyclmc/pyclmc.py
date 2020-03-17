@@ -16,13 +16,13 @@ HEADER_TEXT = ""
 def main():
     stdscr = _init_curses()
 
-    set_header_text(stdscr, "Initializing... - pyclmc")
+    set_header_text(stdscr, "Initializing...")
 
     mplayer_process = _init_mplayer_with_pipe()
-    set_header_text(stdscr, "Playing - pyclmc")
+    set_header_text(stdscr, "Playing")
     sleep(60)
 
-    set_header_text(stdscr, "Quitting... - pyclmc")
+    set_header_text(stdscr, "Quitting...")
     _quit_mplayer(mplayer_process)
     _quit_curses(stdscr)
 
@@ -41,7 +41,7 @@ def _quit_curses(stdscr):  # Revert to terminal-friendly mode
     curses.endwin()
 
 def set_header_text(stdscr, text):
-    HEADER_TEXT = text
+    HEADER_TEXT = f'{text} - pyclmc'
     stdscr.addstr(0, 0, int(curses.COLS/2-(len(HEADER_TEXT)/2))*" " + HEADER_TEXT + int(curses.COLS/2-(len(HEADER_TEXT)/2)) * " ",
               curses.A_REVERSE)
     stdscr.refresh()
