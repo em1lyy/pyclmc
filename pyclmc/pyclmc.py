@@ -13,6 +13,12 @@ import errno
 import asyncio
 import threading
 
+import numpy
+from PIL import Image
+import curses
+import requests
+from io import BytesIO
+
 import listenmoe_websocket
 
 # Variables describing the current program state
@@ -65,6 +71,7 @@ def _init_curses():
     stdscr.keypad(True)  # Conversion of special characters
     stdscr.clear()  # Clear screen
     curses.curs_set(0)  # Make cursor invisible
+    curses.start_color()
     # stdscr.addstr(curses.LINES-1, 0, curses.COLS * " ", curses.A_REVERSE)  # Add white line at bottom (doesn't work)
     return stdscr
 
@@ -94,8 +101,10 @@ def update_meta_variables(data, stdscr):  # Updates the metadata variables and t
         CURRENT_META["title"] = data['d']['song']['title']
         if data['d']['song']['albums']:
             CURRENT_META["album"] = data['d']['song']['albums'][0]['name']  # Although albums is technically an array, why would you want to display multiple albums?
+            CURRENT_META["cover"] = data['d']['song']['albums'][0]['image']
         else:
             CURRENT_META["album"] = "No album"
+            CURRENT_META["cover"] = None
         if data['d']['song']['artists']:
             CURRENT_META["artist"] = ""
             for artist in data['d']['song']['artists']:
@@ -103,6 +112,7 @@ def update_meta_variables(data, stdscr):  # Updates the metadata variables and t
         else:
             CURRENT_META["album"] = "No artist"
         update_meta_display(stdscr)
+        redraw_cover_display(stdscr)
 
 def update_meta_display(stdscr):  # Updates the metadata display
     stdscr.addstr(int(curses.LINES/2)-2, int(curses.COLS/2), _fill_spaces(CURRENT_META["title"]))
@@ -115,6 +125,29 @@ def update_meta_display(stdscr):  # Updates the metadata display
     else:
         stdscr.addstr(int(curses.LINES/2)+2, int(curses.COLS/2), "Paused ")
     stdscr.refresh()
+
+def redraw_cover_display(stdscr):  # Redraws the cover display
+    if CURRENT_META["cover"] is None:
+        return
+    full_url = f'https://cdn.listen.moe/covers/{CURRENT_META["cover"]}'
+    generate_and_show_image(full_url, curses.LINES - 8, 4, stdscr)
+    stdscr.refresh()
+
+def generate_and_show_image(url, height, y_start, window):
+    response = requests.get(url)
+    img = Image.open(BytesIO(response.content))
+    img.convert('RGB')
+    width = int((img.width / img.height) * height)
+    img = img.resize((width, height), Image.ANTIALIAS)
+    img_arr = numpy.asarray(img)
+    height, width, _ = img_arr.shape
+    for y in range(height):
+        for x in range(width):
+            pix = img_arr[y][x]
+            color = int((pix[0]*6/256)*36 + (pix[1]*6/256)*6 + (pix[2]*6/256) - 1)
+            curses.init_color(color, pix[0], pix[1], pix[2])
+            curses.init_pair(color, color, color)
+            window.addstr(y_start+y, x+1, "#", curses.color_pair(color))
 
 def _fill_spaces(text):  # Fills spaces after text until window end
     return text + (int(curses.COLS/2-(len(text))) * " ")
