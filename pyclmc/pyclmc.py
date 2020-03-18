@@ -10,6 +10,10 @@ from time import sleep
 import curses
 from subprocess import Popen, PIPE, DEVNULL
 import errno
+import asyncio
+import threading
+
+import listenmoe_websocket
 
 HEADER_TEXT = ""
 
@@ -22,7 +26,7 @@ VOLUME = 100
 VOLUMESTEP = 5
 PLAYING_STATE = True
 MUTED_STATE = False
-CURRENT_META = { "title": "Unknown title", "album": "Unknown album", "artist": "Unknown artist" }
+CURRENT_META = { "title": "Loading title...", "album": "Loading album...", "artist": "Loading artist...", "cover": None }
 
 def main():
     stdscr = _init_curses()
@@ -32,6 +36,8 @@ def main():
     mplayer_process = _init_mplayer_with_pipe()
     set_header_text(stdscr, "Playing")
     update_meta_display(stdscr)
+
+    wsthread = _init_metadata_websocket(stdscr)
 
     key_event = -1
     while key_event not in QUIT:  # Handle keys
@@ -46,6 +52,7 @@ def main():
             mplayer_playpause(stdscr, mplayer_process)
 
     set_header_text(stdscr, "Quitting...")
+    _quit_metadata_websocket()
     _quit_mplayer(mplayer_process)
     _quit_curses(stdscr)
 
@@ -64,17 +71,42 @@ def _quit_curses(stdscr):  # Revert to terminal-friendly mode
     curses.echo()
     curses.endwin()
 
+def _init_metadata_websocket(stdscr):
+    loop = asyncio.get_event_loop()
+    wsthread = threading.Thread(target=listenmoe_websocket.run_mainloop, args=(loop, update_meta_variables, stdscr,))
+    wsthread.start()
+    return wsthread
+
+def _quit_metadata_websocket():
+    loop = asyncio.get_event_loop()
+    loop.stop()
+
 def set_header_text(stdscr, text):  # Change the text of the window header
     HEADER_TEXT = f'{text} - pyclmc'
     stdscr.addstr(0, 0, int(curses.COLS/2-(len(HEADER_TEXT)/2))*" " + HEADER_TEXT + int(curses.COLS/2-(len(HEADER_TEXT)/2)) * " ",
               curses.A_REVERSE)
     stdscr.refresh()
 
+def update_meta_variables(data, stdscr):
+    if data['t'] == 'TRACK_UPDATE':
+        CURRENT_META["title"] = data['d']['song']['title']
+        if data['d']['song']['albums']:
+            CURRENT_META["album"] = data['d']['song']['albums'][0]['name']  # Although albums is technically an array, why would you want to display multiple albums?
+        else:
+            CURRENT_META["album"] = "No album"
+        if data['d']['song']['artists']:
+            CURRENT_META["artist"] = ""
+            for artist in data['d']['song']['artists']:
+                CURRENT_META["artist"] += artist['name'] + "　"
+        else:
+            CURRENT_META["album"] = "No artist"
+        update_meta_display(stdscr)
+
 def update_meta_display(stdscr):  # Updates the metadata display
     stdscr.addstr(int(curses.LINES/2)-2, int(curses.COLS/2), _fill_spaces(CURRENT_META["title"]))
     stdscr.addstr(int(curses.LINES/2)-1, int(curses.COLS/2), _fill_spaces(CURRENT_META["album"]))
     stdscr.addstr(int(curses.LINES/2), int(curses.COLS/2), _fill_spaces(CURRENT_META["artist"]))
-    volume = f'Volume: {str(VOLUME)}% {" (muted)" if MUTED_STATE else "          "}'
+    volume = f'Volume: {str(VOLUME)}% {" (muted)  " if MUTED_STATE else "          "}'
     stdscr.addstr(int(curses.LINES/2)+1, int(curses.COLS/2), volume)
     if PLAYING_STATE:
         stdscr.addstr(int(curses.LINES/2)+2, int(curses.COLS/2), "Playing")
