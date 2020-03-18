@@ -96,7 +96,7 @@ def update_meta_variables(data, stdscr):
         if data['d']['song']['artists']:
             CURRENT_META["artist"] = ""
             for artist in data['d']['song']['artists']:
-                CURRENT_META["artist"] += artist['name'] + "　"
+                CURRENT_META["artist"] += artist['name'] + "  "
         else:
             CURRENT_META["album"] = "No artist"
         update_meta_display(stdscr)
@@ -114,7 +114,7 @@ def update_meta_display(stdscr):  # Updates the metadata display
     stdscr.refresh()
 
 def _fill_spaces(text):  # Fills spaces after text until window end
-    return text + (int(curses.COLS/2-(len(text))) * "　")
+    return text + (int(curses.COLS/2-(len(text))) * " ")
 
 def _init_mplayer_with_pipe():  # Start mplayer and return the stdin as a pipe
     p = Popen(f'mplayer -volume {VOLUME} -volstep {VOLUMESTEP} https://listen.moe/stream', stdin=PIPE, stdout=DEVNULL)
