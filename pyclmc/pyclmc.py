@@ -15,18 +15,20 @@ import threading
 
 import listenmoe_websocket
 
+# Variables describing the current program state
 HEADER_TEXT = ""
+PLAYING_STATE = True
+MUTED_STATE = False
+VOLUME = 100
+CURRENT_META = { "title": "Loading title...", "album": "Loading album...", "artist": "Loading artist...", "cover": None }
 
+# Config Variables
 QUIT = [ord('q'), curses.KEY_CANCEL, curses.KEY_END, curses.KEY_EXIT, 27]
 VOLUME_UP = [ord('+'), ord('0'), curses.KEY_UP]
 VOLUME_DOWN = [ord('-'), ord('9'), curses.KEY_DOWN]
 MUTE = [ord('m')]
 PLAYPAUSE = [ord(' '), ord('p'), curses.KEY_ENTER]
-VOLUME = 100
 VOLUMESTEP = 5
-PLAYING_STATE = True
-MUTED_STATE = False
-CURRENT_META = { "title": "Loading title...", "album": "Loading album...", "artist": "Loading artist...", "cover": None }
 
 def main():
     stdscr = _init_curses()
@@ -63,6 +65,7 @@ def _init_curses():
     stdscr.keypad(True)  # Conversion of special characters
     stdscr.clear()  # Clear screen
     curses.curs_set(0)  # Make cursor invisible
+    # stdscr.addstr(curses.LINES-1, 0, curses.COLS * " ", curses.A_REVERSE)  # Add white line at bottom (doesn't work)
     return stdscr
 
 def _quit_curses(stdscr):  # Revert to terminal-friendly mode
@@ -71,13 +74,13 @@ def _quit_curses(stdscr):  # Revert to terminal-friendly mode
     curses.echo()
     curses.endwin()
 
-def _init_metadata_websocket(stdscr):
-    loop = asyncio.get_event_loop()
+def _init_metadata_websocket(stdscr):  # Starts a thread which runs the Listen.Moe Metadata Websocket.
+    loop = asyncio.get_event_loop()    # See comments in listenmoe_websocket.py
     wsthread = threading.Thread(target=listenmoe_websocket.run_mainloop, args=(loop, update_meta_variables, stdscr,))
     wsthread.start()
     return wsthread
 
-def _quit_metadata_websocket():
+def _quit_metadata_websocket():  # Sets the cancel variable of the websocket manager to true, resulting in the websocket shutting down
     listenmoe_websocket.cancel = True
 
 def set_header_text(stdscr, text):  # Change the text of the window header
@@ -86,7 +89,7 @@ def set_header_text(stdscr, text):  # Change the text of the window header
               curses.A_REVERSE)
     stdscr.refresh()
 
-def update_meta_variables(data, stdscr):
+def update_meta_variables(data, stdscr):  # Updates the metadata variables and then calls update_meta_display(stdscr)
     if data['t'] == 'TRACK_UPDATE':
         CURRENT_META["title"] = data['d']['song']['title']
         if data['d']['song']['albums']:
