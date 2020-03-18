@@ -78,8 +78,7 @@ def _init_metadata_websocket(stdscr):
     return wsthread
 
 def _quit_metadata_websocket():
-    loop = asyncio.get_event_loop()
-    loop.stop()
+    listenmoe_websocket.cancel = True
 
 def set_header_text(stdscr, text):  # Change the text of the window header
     HEADER_TEXT = f'{text} - pyclmc'
