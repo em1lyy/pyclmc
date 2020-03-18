@@ -105,7 +105,7 @@ def update_meta_display(stdscr):  # Updates the metadata display
     stdscr.addstr(int(curses.LINES/2)-2, int(curses.COLS/2), _fill_spaces(CURRENT_META["title"]))
     stdscr.addstr(int(curses.LINES/2)-1, int(curses.COLS/2), _fill_spaces(CURRENT_META["album"]))
     stdscr.addstr(int(curses.LINES/2), int(curses.COLS/2), _fill_spaces(CURRENT_META["artist"]))
-    volume = f'Volume: {str(VOLUME)}% {" (muted)  " if MUTED_STATE else "          "}'
+    volume = f'Volume: {str(VOLUME)}% {"(muted)  " if MUTED_STATE else "         "}'
     stdscr.addstr(int(curses.LINES/2)+1, int(curses.COLS/2), volume)
     if PLAYING_STATE:
         stdscr.addstr(int(curses.LINES/2)+2, int(curses.COLS/2), "Playing")
