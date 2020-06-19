@@ -83,7 +83,7 @@ def _quit_curses(stdscr):  # Revert to terminal-friendly mode
 
 def _init_metadata_websocket(stdscr):  # Starts a thread which runs the Listen.Moe Metadata Websocket.
     loop = asyncio.get_event_loop()    # See comments in listenmoe_websocket.py
-    wsthread = threading.Thread(target=listenmoe_websocket.run_mainloop, args=(loop, update_meta_variables, stdscr,))
+    wsthread = threading.Thread(target=listenmoe_websocket.run_mainloop, args=(loop, update_meta_variables, stdscr,), daemon=True)
     wsthread.start()
     return wsthread
 
@@ -112,7 +112,7 @@ def update_meta_variables(data, stdscr):  # Updates the metadata variables and t
         else:
             CURRENT_META["album"] = "No artist"
         update_meta_display(stdscr)
-        redraw_cover_display(stdscr)
+        # redraw_cover_display(stdscr)
 
 def update_meta_display(stdscr):  # Updates the metadata display
     stdscr.addstr(int(curses.LINES/2)-2, int(curses.COLS/2), _fill_spaces(CURRENT_META["title"]))
