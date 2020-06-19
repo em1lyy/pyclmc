@@ -12,6 +12,7 @@ from subprocess import Popen, PIPE, DEVNULL
 import errno
 import asyncio
 import threading
+from random import choice, randint
 
 import numpy
 from PIL import Image
@@ -27,6 +28,7 @@ PLAYING_STATE = True
 MUTED_STATE = False
 VOLUME = 100
 CURRENT_META = { "title": "Loading title...", "album": "Loading album...", "artist": "Loading artist...", "cover": None }
+CURRENT_FOOTER = ""
 
 # Config Variables
 QUIT = [ord('q'), curses.KEY_CANCEL, curses.KEY_END, curses.KEY_EXIT, 27]
@@ -35,6 +37,18 @@ VOLUME_DOWN = [ord('-'), ord('9'), curses.KEY_DOWN]
 MUTE = [ord('m')]
 PLAYPAUSE = [ord(' '), ord('p'), curses.KEY_ENTER]
 VOLUMESTEP = 5
+
+# Footers
+FOOTERS = [[ "#    # #### ##### ##### #   #    #   #  ###  #####",
+             "#    # #      #   #     ##  #    ## ## #   # #    ",
+             "#    # ####   #   ##### # # #    # # # #   # #####",
+             "#    #    #   #   #     #  ## ## #   # #   # #    ",
+             "#### # ####   #   ##### #   # ## #   #  ###  #####" ],
+           [ "###  #   #  ### #    #   #  ###",
+             "#  # #   # #    #    ## ## #   ",
+             "###   # #  #    #    # # # #   ",
+             "#      #   #    #    #   # #   ",
+             "#      #    ### #### #   #  ###" ]]
 
 def main():
     stdscr = _init_curses()
@@ -46,7 +60,8 @@ def main():
     update_meta_display(stdscr)
 
     wsthread = _init_metadata_websocket(stdscr)
-
+    footerthread = _init_footer(stdscr)
+    
     key_event = -1
     while key_event not in QUIT:  # Handle keys
         key_event = stdscr.getch()
@@ -60,7 +75,7 @@ def main():
             mplayer_playpause(stdscr, mplayer_process)
 
     set_header_text(stdscr, "Quitting...")
-    _quit_metadata_websocket()
+    # _quit_metadata_websocket()  # This is no longer needed. It is still kept just in case something breaks
     _quit_mplayer(mplayer_process)
     _quit_curses(stdscr)
 
@@ -91,12 +106,36 @@ def _quit_metadata_websocket():  # Sets the cancel variable of the websocket man
     listenmoe_websocket.cancel = True
 
 def set_header_text(stdscr, text):  # Change the text of the window header
+    global HEADER_TEXT
     HEADER_TEXT = f'{text} - pyclmc'
     stdscr.addstr(0, 0, int(curses.COLS/2-(len(HEADER_TEXT)/2))*" " + HEADER_TEXT + int(curses.COLS/2-(len(HEADER_TEXT)/2)) * " ",
               curses.A_REVERSE)
     stdscr.refresh()
 
+def _init_footer(stdscr):
+    global CURRENT_FOOTER
+    CURRENT_FOOTER = choice(FOOTERS)
+    footerthread = threading.Thread(target=_footer_thread_runner, args=(stdscr,), daemon=True)
+    footerthread.start()
+    return footerthread
+
+def _footer_thread_runner(stdscr):
+    sleep(0.1)
+    while True:
+        update_footer(stdscr)
+        sleep(1)
+
+def update_footer(stdscr):
+    y = 0
+    for line in CURRENT_FOOTER:
+        color = randint(1, 7)
+        curses.init_pair(color, color, 0)
+        stdscr.addstr(curses.LINES - 6 + y, int((stdscr.getmaxyx()[1] - len(line)) / 2), line, curses.color_pair(color))
+        y += 1
+    stdscr.refresh()
+
 def update_meta_variables(data, stdscr):  # Updates the metadata variables and then calls update_meta_display(stdscr)
+    global CURRENT_META
     if data['t'] == 'TRACK_UPDATE':
         CURRENT_META["title"] = data['d']['song']['title']
         if data['d']['song']['albums']:

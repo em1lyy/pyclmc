@@ -19,9 +19,10 @@ async def send_ws(ws, data):  # Sends json data over websocket ws
     await ws.send(json_data)
 
 async def _send_pings(ws, interval=45):  # Sends a heartbeat every interval seconds via ws
-    await asyncio.sleep(interval)
-    msg = { 'op': 9 }
-    await send_ws(ws, msg)
+    while True:
+        await asyncio.sleep(interval)
+        msg = { 'op': 9 }
+        await send_ws(ws, msg)
 
 async def mainloop(loop, on_meta_update, second_arg_for_on_meta_update):
     url = 'wss://listen.moe/gateway_v2'  # Inits websocket
