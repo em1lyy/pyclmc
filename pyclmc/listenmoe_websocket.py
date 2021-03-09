@@ -4,7 +4,7 @@
 # Slightly modified version of https://docs.listen.moe/ws/usage.html#python
 #
 # Released under GNU GPLv3 https://www.gnu.org/licenses/gpl-3.0.en.html
-# Maintained by Jonas Jaguar <jonasjaguar@jagudev.net>, 2020
+# Maintained by and Copyright 2020 - 2021, Emily <elishikawa@jagudev.net>
 
 import json
 import asyncio
