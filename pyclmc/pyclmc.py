@@ -192,7 +192,7 @@ def _fill_spaces(text):  # Fills spaces after text until window end
     return text + (int(curses.COLS/2-(len(text))) * " ")
 
 def _init_mplayer_with_pipe():  # Start mplayer and return the stdin as a pipe
-    p = Popen(f'mplayer -volume {VOLUME} -volstep {VOLUMESTEP} https://listen.moe/stream', stdin=PIPE, stdout=DEVNULL)
+    p = Popen(['mplayer', '-volume', str(VOLUME), '-volstep', str(VOLUMESTEP), 'https://listen.moe/stream'], stdin=PIPE, stdout=DEVNULL)
     return p
 
 def _quit_mplayer(proc):  # Send q character to mplayer to quit
