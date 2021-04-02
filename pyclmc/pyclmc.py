@@ -26,7 +26,7 @@ import listenmoe_websocket
 HEADER_TEXT = ""
 PLAYING_STATE = True
 MUTED_STATE = False
-VOLUME = 100
+VOLUME = 75
 CURRENT_META = { "title": "Loading title...", "album": "Loading album...", "artist": "Loading artist...", "cover": None }
 CURRENT_FOOTER = ""
 
@@ -169,7 +169,7 @@ def redraw_cover_display(stdscr):  # Redraws the cover display
     if CURRENT_META["cover"] is None:
         return
     full_url = f'https://cdn.listen.moe/covers/{CURRENT_META["cover"]}'
-    generate_and_show_image(full_url, curses.LINES - 8, 4, stdscr)
+    generate_and_show_image(full_url, 16, 4, stdscr)
     stdscr.refresh()
 
 def generate_and_show_image(url, height, y_start, window):
