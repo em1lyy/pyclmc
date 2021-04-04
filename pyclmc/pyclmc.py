@@ -29,6 +29,9 @@ MUTED_STATE = False
 VOLUME = 75
 CURRENT_META = { "title": "Loading title...", "album": "Loading album...", "artist": "Loading artist...", "cover": None }
 CURRENT_FOOTER = ""
+COVER_ANIM_MODES = [ "SPECTRUM", "WAVE", "SPIN", "OUTLINESPIN", "PULSE" ]
+COVER_ANIM_MODE_INDEX = 0
+COVER_ANIM_FRAME = 0
 
 # Config Variables
 QUIT = [ord('q'), curses.KEY_CANCEL, curses.KEY_END, curses.KEY_EXIT, 27]
@@ -174,24 +177,26 @@ def redraw_cover_display(stdscr):  # Redraws the cover display
     if CURRENT_META["cover"] is None:
         return
     full_url = f'https://cdn.listen.moe/covers/{CURRENT_META["cover"]}'
-    generate_and_show_image(full_url, 16, 4, stdscr)
+    generate_and_show_image(full_url, curses.LINES - 16, 8, 4, stdscr)
     stdscr.refresh()
 
-def generate_and_show_image(url, height, y_start, window):
-    response = requests.get(url)
-    img = Image.open(BytesIO(response.content))
-    img.convert('RGB')
-    width = int((img.width / img.height) * height)
-    img = img.resize((width, height), Image.ANTIALIAS)
-    img_arr = numpy.asarray(img)
-    height, width, _ = img_arr.shape
-    for y in range(height):
-        for x in range(width):
+def generate_and_show_image(url, dim, y_start, x_start, window):
+    img_arr = _gen_img_arr_frame(dim)
+    for y in range(dim):
+        for x in range(dim):
             pix = img_arr[y][x]
             color = int((pix[0]*6/256)*36 + (pix[1]*6/256)*6 + (pix[2]*6/256) - 1)
             curses.init_color(color, pix[0], pix[1], pix[2])
             curses.init_pair(color, color, color)
-            window.addstr(y_start+y, x+1, "#", curses.color_pair(color))
+            window.addstr(y_start + y, x_start + x, "#", curses.color_pair(color))
+
+def _gen_img_arr_frame(dim):
+    mode = COVER_ANIM_MODES[COVER_ANIM_MODE_INDEX]
+    if mode == "SPECTRUM":
+        pass
+    else:
+        noarr = [0] * dim
+        return [noarr] * dim
 
 def _fill_spaces(text):  # Fills spaces after text until window end
     return text + (int(curses.COLS/2-(len(text))) * " ")
