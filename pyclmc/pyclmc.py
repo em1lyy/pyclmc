@@ -193,9 +193,9 @@ def generate_and_show_image(url, dim, y_start, x_start, window):
 def _gen_img_arr_frame(dim):
     mode = COVER_ANIM_MODES[COVER_ANIM_MODE_INDEX]
     if mode == "SPECTRUM":
-        pass
+        specarr = None
     else:
-        noarr = [0] * dim
+        noarr = [[0, 0, 0]] * dim
         return [noarr] * dim
 
 def _fill_spaces(text):  # Fills spaces after text until window end
