@@ -14,12 +14,6 @@ import asyncio
 import threading
 from random import choice, randint
 
-import numpy
-from PIL import Image
-import curses
-import requests
-from io import BytesIO
-
 import listenmoe_websocket
 
 # Variables describing the current program state
