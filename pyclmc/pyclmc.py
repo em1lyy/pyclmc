@@ -205,7 +205,7 @@ def _gen_img_arr_frame(dim):
     mode = COVER_ANIM_MODES[COVER_ANIM_MODE_INDEX]
     if mode == "SPECTRUM":
         col = colorsys.hsv_to_rgb(COVER_ANIM_FRAME / 1000.0, 0.8, 0.6)
-        specarr = [[col[0] * 250, col[1] * 254, col[2] * 254]] * dim
+        specarr = [[col[0] * 250, col[1] * 250, col[2] * 250]] * dim
         return [specarr] * dim
     else:
         noarr = [[0, 0, 0]] * dim
