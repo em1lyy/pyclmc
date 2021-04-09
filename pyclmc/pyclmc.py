@@ -13,6 +13,8 @@ import errno
 import asyncio
 import threading
 from random import choice, randint
+import colorsys
+from math import floor
 
 import listenmoe_websocket
 
@@ -63,6 +65,7 @@ def main():
 
     wsthread = _init_metadata_websocket(stdscr)
     footerthread = _init_footer(stdscr)
+    coverthread = _init_cover(stdscr)
     
     key_event = -1
     while key_event not in QUIT:  # Handle keys
@@ -153,7 +156,6 @@ def update_meta_variables(data, stdscr):  # Updates the metadata variables and t
         else:
             CURRENT_META["album"] = "No artist"
         update_meta_display(stdscr)
-        # redraw_cover_display(stdscr)
 
 def update_meta_display(stdscr):  # Updates the metadata display
     stdscr.addstr(int(curses.LINES/2)-2, int(curses.COLS/2), _fill_spaces(CURRENT_META["title"]))
@@ -167,27 +169,44 @@ def update_meta_display(stdscr):  # Updates the metadata display
         stdscr.addstr(int(curses.LINES/2)+2, int(curses.COLS/2), "Paused ")
     stdscr.refresh()
 
+def _init_cover(stdscr):
+#    global COVER_ANIM_MODE_INDEX
+#    COVER_ANIM_MODE_INDEX = randint(0, len(COVER_ANIM_MODES) - 1)
+    coverthread = threading.Thread(target=_cover_thread_runner, args=(stdscr,), daemon=True)
+    coverthread.start()
+    return coverthread
+
+def _cover_thread_runner(stdscr):
+    sleep(0.2)
+    while True:
+        redraw_cover_display(stdscr)
+        sleep(0.1)
+
 def redraw_cover_display(stdscr):  # Redraws the cover display
-    if CURRENT_META["cover"] is None:
-        return
-    full_url = f'https://cdn.listen.moe/covers/{CURRENT_META["cover"]}'
-    generate_and_show_image(full_url, curses.LINES - 16, 8, 4, stdscr)
+#    if CURRENT_META["cover"] is None:
+#        return
+#    full_url = f'https://cdn.listen.moe/covers/{CURRENT_META["cover"]}'
+    generate_and_show_image(None, curses.LINES - 24, 12, int(curses.COLS / 2) - ((curses.LINES - 24) * 2) - 2, stdscr)
     stdscr.refresh()
 
 def generate_and_show_image(url, dim, y_start, x_start, window):
     img_arr = _gen_img_arr_frame(dim)
     for y in range(dim):
-        for x in range(dim):
-            pix = img_arr[y][x]
+        for x in range(dim * 2): # monospace fix
+            pix = img_arr[y][floor(x / 2)]
             color = int((pix[0]*6/256)*36 + (pix[1]*6/256)*6 + (pix[2]*6/256) - 1)
-            curses.init_color(color, pix[0], pix[1], pix[2])
+            curses.init_color(color, floor(pix[0] * 4), floor(pix[1] * 4), floor(pix[2] * 4))
             curses.init_pair(color, color, color)
             window.addstr(y_start + y, x_start + x, "#", curses.color_pair(color))
 
 def _gen_img_arr_frame(dim):
+    global COVER_ANIM_FRAME
+    COVER_ANIM_FRAME = (COVER_ANIM_FRAME + 1) % 1001
     mode = COVER_ANIM_MODES[COVER_ANIM_MODE_INDEX]
     if mode == "SPECTRUM":
-        specarr = None
+        col = colorsys.hsv_to_rgb(COVER_ANIM_FRAME / 1000.0, 0.8, 0.6)
+        specarr = [[col[0] * 250, col[1] * 254, col[2] * 254]] * dim
+        return [specarr] * dim
     else:
         noarr = [[0, 0, 0]] * dim
         return [noarr] * dim
