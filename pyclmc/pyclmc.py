@@ -35,6 +35,7 @@ VOLUME_UP = [ord('+'), ord('0'), curses.KEY_UP]
 VOLUME_DOWN = [ord('-'), ord('9'), curses.KEY_DOWN]
 MUTE = [ord('m')]
 PLAYPAUSE = [ord(' '), ord('p'), curses.KEY_ENTER]
+CLEARSCREEN = [ord('c'), ord('r')]
 VOLUMESTEP = 5
 
 # Footers
@@ -78,6 +79,8 @@ def main():
             mplayer_mutetoggle(stdscr, mplayer_process)
         elif key_event in PLAYPAUSE:
             mplayer_playpause(stdscr, mplayer_process)
+        elif key_event in CLEARSCREEN:
+            full_redraw(stdscr, True)
 
     set_header_text(stdscr, "Quitting...")
     # _quit_metadata_websocket()  # This is no longer needed. It is still kept just in case something breaks
@@ -115,6 +118,15 @@ def set_header_text(stdscr, text):  # Change the text of the window header
     HEADER_TEXT = f'{text} - pyclmc'
     stdscr.addstr(0, 0, int(curses.COLS/2-(len(HEADER_TEXT)/2))*" " + HEADER_TEXT + int(curses.COLS/2-(len(HEADER_TEXT)/2)) * " ",
               curses.A_REVERSE)
+    stdscr.refresh()
+
+def full_redraw(stdscr, redraw_meta):
+    stdscr.clear()
+    if redraw_meta:
+        update_meta_display(stdscr)
+    set_header_text(stdscr, HEADER_TEXT[:-9])
+    update_footer(stdscr)
+    generate_and_show_image(None, curses.LINES - 24, 12, int(curses.COLS / 2) - ((curses.LINES - 24) * 2) - 2, stdscr)
     stdscr.refresh()
 
 def _init_footer(stdscr):
@@ -155,6 +167,7 @@ def update_meta_variables(data, stdscr):  # Updates the metadata variables and t
                 CURRENT_META["artist"] += artist['name'] + "  "
         else:
             CURRENT_META["album"] = "No artist"
+        full_redraw(stdscr, False)
         update_meta_display(stdscr)
 
 def update_meta_display(stdscr):  # Updates the metadata display
@@ -177,7 +190,7 @@ def _init_cover(stdscr):
     return coverthread
 
 def _cover_thread_runner(stdscr):
-    sleep(0.2)
+    sleep(0.156)
     while True:
         redraw_cover_display(stdscr)
         sleep(0.1)
